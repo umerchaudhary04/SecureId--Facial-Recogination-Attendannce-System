@@ -1,6 +1,6 @@
 # 🔐 SecureID — Face Recognition Attendance & Entry System
 
-> **Final Year Project | Django + OpenCV + face_recognition**
+> **Project | Django + OpenCV + face_recognition**
 > Smart campus security system with AI-powered identity verification, entry/exit tracking, and automated reporting.
 
 ---
@@ -196,30 +196,8 @@ secureid/
 - [ ] Use HTTPS (face recognition requires camera permissions)
 - [ ] Set up Gunicorn + Nginx
 
----
-
-## 🎓 Viva Preparation — Key Questions
-
-**Q: How does face recognition work?**
-> We use the `face_recognition` library which internally uses dlib's ResNet model to generate a 128-dimensional embedding vector for each face. During recognition, we compute the Euclidean distance between the unknown face vector and all stored vectors. If the distance is below our tolerance (0.5), it's a match.
-
-**Q: How do you prevent proxy attendance?**
-> Face biometrics cannot be shared or duplicated like ID cards or RFID. Each person has a unique face embedding stored, and the system requires physical presence in front of the webcam.
-
-**Q: What is the tolerance parameter?**
-> It controls how strict the matching is. Lower value (e.g. 0.4) = stricter = fewer false positives. Higher value (0.6) = more lenient = catches more variations in lighting/angle.
-
-**Q: What if two people look similar?**
-> dlib's face encoding captures 128 unique features. Even identical twins typically have slightly different embeddings. The tolerance threshold prevents false matches.
-
-**Q: How is late entry detected?**
-> We compare the `entry_time` with the configured `LATE_ENTRY_THRESHOLD_HOUR` (9:00 AM). Any entry after that time is automatically marked as `late`.
-
----
 
 ## 👨‍💻 Author
-  Umer Asghar 
+  Umer Asghar [umerchaudhary2004@gmail.com]
 **SecureID v2.0**
 Built with Django + OpenCV + face_recognition
-Final Year Project — 2024/2025
-# SecureId--Facial-Recogination-Attendannce-System
