@@ -1,0 +1,113 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Students{% endblock %}
+{% block topbar_title %}<span>STUDENT MANAGEMENT</span>{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title"><i class="bi bi-people" style="color:var(--cyan)"></i> Students</div>
+    <div class="page-header-sub">{{ students|length }} active student{{ students|length|pluralize }} registered</div>
+  </div>
+  <a href="{% url 'register_student' %}" class="btn-sid btn-sid-primary">
+    <i class="bi bi-person-plus"></i> Register Student
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="sid-card mb-3">
+  <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
+    <div style="flex:1;min-width:160px">
+      <label class="sid-label">Search</label>
+      <input type="text" name="q" value="{{ query }}" class="sid-input" placeholder="Name or Roll No…">
+    </div>
+    <div style="min-width:160px">
+      <label class="sid-label">Department</label>
+      <select name="dept" class="sid-input">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+        <option value="{{ d.pk }}" {% if dept_id == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-sid btn-sid-outline"><i class="bi bi-search"></i> Filter</button>
+    <a href="{% url 'student_list' %}" class="btn-sid btn-sid-ghost"><i class="bi bi-x"></i> Clear</a>
+  </form>
+</div>
+
+<div class="sid-card" style="padding:0;overflow:hidden">
+  {% if students %}
+  <div style="overflow-x:auto">
+    <table class="sid-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Department</th>
+          <th>Year</th>
+          <th>Today</th>
+          <th>Face</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {% if student.photo %}
+              <img src="{{ student.photo.url }}" class="student-avatar" alt="">
+              {% else %}
+              <div class="student-avatar-placeholder"><i class="bi bi-person"></i></div>
+              {% endif %}
+              <div>
+                <div style="font-weight:600;font-size:13px">{{ student.name }}</div>
+                <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">{{ student.roll_number }}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:12px;color:var(--text-muted)">{{ student.department|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--text-muted)">{{ student.get_year_display }}</td>
+          <td>
+            <span class="badge-sid badge-{{ student.today_status }}">
+              {{ student.today_status|capfirst }}
+            </span>
+          </td>
+          <td>
+            {% if student.has_face_registered %}
+            <span style="color:var(--green);font-size:18px" title="Face registered"><i class="bi bi-check-circle-fill"></i></span>
+            {% else %}
+            <span style="color:var(--red);font-size:18px" title="No face registered"><i class="bi bi-x-circle"></i></span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'capture_face' student.pk %}" class="btn-sid btn-sid-ghost" style="padding:5px 10px;font-size:11px" title="Capture Face">
+                <i class="bi bi-camera"></i>
+              </a>
+              <a href="{% url 'student_report' student.pk %}" class="btn-sid btn-sid-ghost" style="padding:5px 10px;font-size:11px" title="Report">
+                <i class="bi bi-graph-up"></i>
+              </a>
+              <a href="{% url 'edit_student' student.pk %}" class="btn-sid btn-sid-ghost" style="padding:5px 10px;font-size:11px" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form method="post" action="{% url 'delete_student' student.pk %}" onsubmit="return confirm('Remove {{ student.name }} from the system?')">
+                {% csrf_token %}
+                <button type="submit" class="btn-sid" style="background:rgba(255,61,90,.1);color:var(--red);border:1px solid rgba(255,61,90,.2);padding:5px 10px;font-size:11px" title="Remove">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:48px;color:var(--text-muted)">
+    <i class="bi bi-people" style="font-size:40px;display:block;margin-bottom:12px"></i>
+    No students found.
+    <a href="{% url 'register_student' %}" style="color:var(--cyan)">Register the first student →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

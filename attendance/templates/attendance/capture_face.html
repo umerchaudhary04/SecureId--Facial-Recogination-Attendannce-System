@@ -1,0 +1,201 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Capture Face – {{ student.name }}{% endblock %}
+{% block topbar_title %}<span>FACE CAPTURE</span>{% endblock %}
+
+{% block extra_head %}
+<style>
+.capture-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+.cam-frame { position:relative; background:#000; border:1px solid var(--border); border-radius:12px; overflow:hidden; aspect-ratio:4/3; }
+#webcam { width:100%;height:100%;object-fit:cover;transform:scaleX(-1); }
+.corner { position:absolute;width:28px;height:28px;border-color:var(--cyan);border-style:solid;border-width:0; }
+.corner.tl{top:12px;left:12px;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0}
+.corner.tr{top:12px;right:12px;border-top-width:3px;border-right-width:3px;border-radius:0 4px 0 0}
+.corner.bl{bottom:12px;left:12px;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 4px}
+.corner.br{bottom:12px;right:12px;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0}
+.face-oval { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:150px;height:180px;border:2px dashed rgba(0,229,255,.5);border-radius:75px;animation:breathe 3s ease-in-out infinite; }
+@keyframes breathe{0%,100%{border-color:rgba(0,229,255,.4)}50%{border-color:rgba(0,229,255,1);box-shadow:0 0 20px rgba(0,229,255,.3)}}
+.progress-steps .step { display:flex;align-items:center;gap:10px;padding:8px 0; }
+.step-num { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0; }
+.step.done .step-num { background:var(--green);color:#000; }
+.step.active .step-num { background:var(--cyan);color:#000;animation:pulse 2s infinite; }
+.step.pending .step-num { background:var(--border);color:var(--text-muted); }
+@media(max-width:860px){ .capture-grid{grid-template-columns:1fr} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title"><i class="bi bi-camera" style="color:var(--cyan)"></i> Face Registration</div>
+    <div class="page-header-sub">Registering face for: <strong style="color:var(--text)">{{ student.name }} ({{ student.roll_number }})</strong></div>
+  </div>
+  <a href="{% url 'student_list' %}" class="btn-sid btn-sid-ghost"><i class="bi bi-x"></i> Skip</a>
+</div>
+
+<div class="capture-grid">
+  <div>
+    <div class="cam-frame" id="camFrame">
+      <video id="webcam" autoplay playsinline></video>
+      <canvas id="canvas" style="display:none"></canvas>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="face-oval" id="faceOval"></div>
+
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.9));padding:20px 14px 12px">
+        <div id="camHint" style="font-family:var(--mono);font-size:12px;color:var(--cyan)">
+          <i class="bi bi-camera"></i> Camera loading…
+        </div>
+      </div>
+
+      <div id="camStart" style="position:absolute;inset:0;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:12px">
+        <i class="bi bi-camera-video" style="font-size:48px;color:var(--cyan)"></i>
+        <div style="font-size:14px;font-weight:600">Ready to Register Face</div>
+        <div style="font-size:12px;color:var(--text-muted);text-align:center;max-width:220px">Position {{ student.name }}'s face in the oval, then capture</div>
+        <button onclick="startCam()" class="btn-sid btn-sid-primary"><i class="bi bi-play-fill"></i> Open Camera</button>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3" id="captureControls" style="display:none!important">
+      <button onclick="captureAndSave()" class="btn-sid btn-sid-primary flex-fill" id="captureBtn" style="justify-content:center;padding:12px">
+        <i class="bi bi-camera-fill"></i> CAPTURE FACE
+      </button>
+      <button onclick="startCam()" class="btn-sid btn-sid-ghost" id="retryBtn" style="display:none">
+        <i class="bi bi-arrow-counterclockwise"></i> Retry
+      </button>
+    </div>
+  </div>
+
+  <div>
+    <!-- Student Card -->
+    <div class="sid-card mb-3">
+      <div class="d-flex align-items-center gap-3">
+        {% if student.photo %}
+        <img src="{{ student.photo.url }}" style="width:56px;height:56px;border-radius:10px;object-fit:cover">
+        {% else %}
+        <div style="width:56px;height:56px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:24px"><i class="bi bi-person"></i></div>
+        {% endif %}
+        <div>
+          <div style="font-weight:600;font-size:14px">{{ student.name }}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">{{ student.roll_number }}</div>
+          <div style="font-size:11px;color:var(--text-muted)">{{ student.department }} · {{ student.get_year_display }}</div>
+        </div>
+      </div>
+
+      {% if student.has_face_registered %}
+      <div class="msg-banner msg-success" style="margin-top:12px;margin-bottom:0">
+        <i class="bi bi-check-circle"></i> Face already registered — recapture to update
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="sid-card mb-3">
+      <h6 style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px">Progress</h6>
+      <div class="progress-steps">
+        <div class="step done">
+          <div class="step-num"><i class="bi bi-check"></i></div>
+          <div><div style="font-size:13px;font-weight:600">Student Registered</div><div style="font-size:11px;color:var(--text-muted)">Info saved ✓</div></div>
+        </div>
+        <div class="step active" id="step2">
+          <div class="step-num">2</div>
+          <div><div style="font-size:13px;font-weight:600">Capture Face</div><div style="font-size:11px;color:var(--text-muted)" id="step2Hint">Open camera and capture</div></div>
+        </div>
+        <div class="step pending" id="step3">
+          <div class="step-num">3</div>
+          <div><div style="font-size:13px;font-weight:600">System Ready</div><div style="font-size:11px;color:var(--text-muted)">Student can use terminal</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="sid-card">
+      <h6 style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px">Tips for Best Results</h6>
+      <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:8px">
+        <div><i class="bi bi-lightbulb" style="color:var(--amber)"></i> Ensure good, even lighting</div>
+        <div><i class="bi bi-eye" style="color:var(--cyan)"></i> Look directly at the camera</div>
+        <div><i class="bi bi-dash-circle" style="color:var(--red)"></i> Remove glasses / hat if possible</div>
+        <div><i class="bi bi-person-bounding-box" style="color:var(--green)"></i> Face should fill the oval guide</div>
+        <div><i class="bi bi-person-x"></i> Only one face in frame</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successOverlay" style="display:none;position:fixed;inset:0;background:rgba(8,12,16,.9);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--green);border-radius:16px;padding:40px;text-align:center;max-width:360px;box-shadow:0 0 60px rgba(0,255,136,.2)">
+    <div style="font-size:56px;margin-bottom:12px">✅</div>
+    <div style="font-size:20px;font-weight:700;color:var(--green);margin-bottom:8px">Face Registered!</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:24px">
+      {{ student.name }}'s face encoding has been saved. They can now mark attendance at the terminal.
+    </div>
+    <a href="{% url 'student_list' %}" class="btn-sid btn-sid-primary" style="justify-content:center;width:100%;padding:12px">
+      <i class="bi bi-people"></i> View All Students
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let stream = null;
+
+async function startCam() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480, facingMode:'user' }});
+    document.getElementById('webcam').srcObject = stream;
+    document.getElementById('camStart').style.display = 'none';
+    document.getElementById('captureControls').style.display = 'flex';
+    document.getElementById('camHint').innerHTML = '<i class="bi bi-circle-fill" style="font-size:7px;animation:pulse 2s infinite"></i> Position face in oval then click CAPTURE';
+  } catch(e) {
+    document.getElementById('camHint').innerHTML = '<i class="bi bi-exclamation-triangle" style="color:var(--red)"></i> Camera error: ' + e.message;
+  }
+}
+
+async function captureAndSave() {
+  const btn = document.getElementById('captureBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> ENCODING FACE…';
+
+  const video = document.getElementById('webcam');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const frame = canvas.toDataURL('image/jpeg', 0.9);
+
+  document.getElementById('camHint').innerHTML = '<i class="bi bi-cpu" style="color:var(--amber)"></i> Processing face encoding…';
+
+  try {
+    const resp = await fetch('{% url "save_face_encoding" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ student_id: {{ student.pk }}, frame })
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      document.getElementById('successOverlay').style.display = 'flex';
+      document.getElementById('step2').className = 'step done';
+      document.getElementById('step2').querySelector('.step-num').innerHTML = '<i class="bi bi-check"></i>';
+      document.getElementById('step3').className = 'step done';
+      document.getElementById('step3').querySelector('.step-num').innerHTML = '<i class="bi bi-check"></i>';
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    } else {
+      document.getElementById('camHint').innerHTML = '<i class="bi bi-x-circle" style="color:var(--red)"></i> ' + data.error;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-camera-fill"></i> RETRY CAPTURE';
+      document.getElementById('retryBtn').style.display = '';
+    }
+  } catch(e) {
+    document.getElementById('camHint').innerHTML = '<i class="bi bi-wifi-off" style="color:var(--red)"></i> Network error';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-camera-fill"></i> RETRY CAPTURE';
+  }
+}
+
+function getCookie(name) {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith(name+'='))?.split('=')[1]||'';
+}
+</script>
+{% endblock %}

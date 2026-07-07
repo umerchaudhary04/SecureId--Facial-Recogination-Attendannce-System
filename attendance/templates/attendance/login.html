@@ -1,0 +1,87 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<style>
+  .login-wrap {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .login-card {
+    width: 100%; max-width: 420px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    position: relative; overflow: hidden;
+  }
+  .login-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--cyan), var(--green), var(--cyan));
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+  }
+  @keyframes shimmer { 0%{background-position:0%} 100%{background-position:200%} }
+
+  .login-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(0,229,255,.15), rgba(0,255,136,.08));
+    border: 1px solid rgba(0,229,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: var(--cyan);
+    margin: 0 auto 24px;
+    box-shadow: 0 0 32px rgba(0,229,255,.15);
+  }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    animation: scan 4s ease-in-out infinite;
+    top: 0;
+  }
+  @keyframes scan {
+    0%,100% { top: 20%; opacity: 0; }
+    20%      { opacity: 1; }
+    80%      { opacity: 1; }
+    0%       { top: 20%; }
+    100%     { top: 80%; }
+  }
+</style>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="scan-line"></div>
+    <div class="login-icon">
+      <i class="bi bi-shield-lock"></i>
+    </div>
+
+    <div class="text-center mb-4">
+      <h1 style="font-family:var(--mono);font-size:22px;color:var(--cyan);letter-spacing:2px">SECURE<span style="color:var(--green)">ID</span></h1>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:4px">Admin Authentication Required</p>
+    </div>
+
+    {% if form.errors %}
+    <div class="msg-banner msg-error"><i class="bi bi-shield-x"></i> Invalid credentials. Access denied.</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="sid-label">Username</label>
+        <input type="text" name="username" class="sid-input" placeholder="admin" autofocus autocomplete="username">
+      </div>
+      <div class="mb-4">
+        <label class="sid-label">Password</label>
+        <input type="password" name="password" class="sid-input" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-sid btn-sid-primary w-100" style="justify-content:center;padding:12px">
+        <i class="bi bi-shield-check"></i> Authenticate
+      </button>
+    </form>
+
+    <div class="mt-4 text-center" style="font-size:11px;color:var(--text-muted)">
+      <i class="bi bi-lock"></i> All sessions are encrypted and logged
+    </div>
+  </div>
+</div>
+{% endblock %}

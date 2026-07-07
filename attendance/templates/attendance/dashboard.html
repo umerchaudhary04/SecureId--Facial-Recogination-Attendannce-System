@@ -1,0 +1,240 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}<span>DASHBOARD</span>{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon cyan"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-value">{{ total_students }}</div>
+      <div class="stat-label">Total Students</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">
+        <i class="bi bi-camera" style="color:var(--cyan)"></i> {{ registered_face }} faces registered
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-value" style="color:var(--green)">{{ present_today }}</div>
+      <div class="stat-label">Present Today</div>
+      <div style="margin-top:8px">
+        <div class="progress-bar-sid">
+          <div class="progress-fill green" style="width:{% if total_students %}{{ present_today|floatformat:0 }}{% else %}0{% endif %}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
+      <div class="stat-value" style="color:var(--red)">{{ absent_today }}</div>
+      <div class="stat-label">Absent Today</div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="bi bi-clock-fill"></i></div>
+      <div class="stat-value" style="color:var(--amber)">{{ late_today }}</div>
+      <div class="stat-label">Late Entries</div>
+    </div>
+  </div>
+</div>
+
+{% if not face_lib_status %}
+<div class="msg-banner msg-warning" style="margin-bottom:20px">
+  <i class="bi bi-exclamation-triangle"></i>
+  <strong>Demo Mode:</strong> face_recognition / OpenCV libraries not installed.
+  Run <code>pip install face-recognition opencv-python</code> to enable real face recognition.
+</div>
+{% endif %}
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <!-- Weekly Attendance Chart -->
+  <div class="col-lg-7">
+    <div class="sid-card">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <div style="font-weight:600;font-size:14px">Weekly Attendance</div>
+          <div style="font-size:11px;color:var(--text-muted)">Last 7 days</div>
+        </div>
+        <span class="badge-sid badge-face"><i class="bi bi-bar-chart"></i> LIVE</span>
+      </div>
+      <canvas id="weeklyChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Department Stats -->
+  <div class="col-lg-5">
+    <div class="sid-card">
+      <div style="font-weight:600;font-size:14px;margin-bottom:16px">Department Attendance Today</div>
+      {% if dept_stats %}
+        {% for d in dept_stats %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span style="font-size:12px">{{ d.name }}</span>
+            <span style="font-family:var(--mono);font-size:12px;color:{% if d.pct >= 75 %}var(--green){% elif d.pct >= 50 %}var(--amber){% else %}var(--red){% endif %}">{{ d.pct }}%</span>
+          </div>
+          <div class="progress-bar-sid">
+            <div class="progress-fill {% if d.pct >= 75 %}green{% elif d.pct >= 50 %}{% else %}red{% endif %}" style="width:{{ d.pct }}%"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">{{ d.present }} / {{ d.total }} students</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px 0">
+          No department data yet.<br><a href="/admin/attendance/department/add/" style="color:var(--cyan)">Add departments</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="sid-card">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div style="font-weight:600;font-size:14px">Recent Activity</div>
+    <a href="{% url 'attendance_logs' %}" class="btn-sid btn-sid-ghost" style="padding:6px 14px;font-size:12px">View All →</a>
+  </div>
+
+  {% if recent_logs %}
+  <div style="overflow-x:auto">
+    <table class="sid-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Date</th>
+          <th>Entry</th>
+          <th>Status</th>
+          <th>Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in recent_logs %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {% if log.student.photo %}
+              <img src="{{ log.student.photo.url }}" class="student-avatar" alt="">
+              {% else %}
+              <div class="student-avatar-placeholder"><i class="bi bi-person"></i></div>
+              {% endif %}
+              <div>
+                <div style="font-weight:600;font-size:13px">{{ log.student.name }}</div>
+                <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">{{ log.student.roll_number }}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-family:var(--mono);font-size:12px">{{ log.date }}</td>
+          <td style="font-family:var(--mono);font-size:12px">{{ log.entry_time|default:"—" }}</td>
+          <td>
+            <span class="badge-sid badge-{{ log.status }}">{{ log.get_status_display }}</span>
+          </td>
+          <td>
+            {% if log.marked_via == 'face' %}
+            <span class="badge-sid badge-face"><i class="bi bi-camera"></i> FACE</span>
+            {% else %}
+            <span style="font-size:11px;color:var(--text-muted)">Manual</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div style="text-align:center;padding:32px;color:var(--text-muted)">
+      <i class="bi bi-clock-history" style="font-size:32px;display:block;margin-bottom:8px"></i>
+      No attendance records yet. <a href="{% url 'home' %}" style="color:var(--cyan)">Start marking attendance →</a>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mt-1">
+  <div class="col-md-4">
+    <a href="{% url 'home' %}" class="sid-card d-flex align-items-center gap-3 text-decoration-none" style="transition:all .2s;cursor:pointer">
+      <div class="stat-icon cyan" style="margin:0;flex-shrink:0"><i class="bi bi-camera-fill"></i></div>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:var(--text)">Mark Attendance</div>
+        <div style="font-size:11px;color:var(--text-muted)">Face recognition terminal</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'register_student' %}" class="sid-card d-flex align-items-center gap-3 text-decoration-none">
+      <div class="stat-icon green" style="margin:0;flex-shrink:0"><i class="bi bi-person-plus-fill"></i></div>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:var(--text)">Register Student</div>
+        <div style="font-size:11px;color:var(--text-muted)">Add new student + face</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'export_csv' %}?date_from={{ today }}&date_to={{ today }}" class="sid-card d-flex align-items-center gap-3 text-decoration-none">
+      <div class="stat-icon amber" style="margin:0;flex-shrink:0"><i class="bi bi-file-earmark-arrow-down-fill"></i></div>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:var(--text)">Export Today's Report</div>
+        <div style="font-size:11px;color:var(--text-muted)">Download CSV</div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const weekly = {{ weekly_data|safe }};
+const ctx    = document.getElementById('weeklyChart').getContext('2d');
+
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels:   weekly.map(d => d.day),
+    datasets: [{
+      label: 'Students Present',
+      data:  weekly.map(d => d.count),
+      backgroundColor: 'rgba(0,229,255,.15)',
+      borderColor: 'rgba(0,229,255,.8)',
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#111820',
+        borderColor: '#1e2d3d',
+        borderWidth: 1,
+        titleColor: '#00e5ff',
+        bodyColor: '#d0e4f0',
+        callbacks: {
+          title: items => weekly[items[0].dataIndex].date,
+          label: item => ` ${item.raw} students present`,
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(30,45,61,.6)' },
+        ticks: { color: '#4a6880', font: { family: 'Space Mono', size: 11 } }
+      },
+      y: {
+        grid: { color: 'rgba(30,45,61,.6)' },
+        ticks: { color: '#4a6880', font: { family: 'Space Mono', size: 11 }, stepSize: 1 },
+        beginAtZero: true,
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

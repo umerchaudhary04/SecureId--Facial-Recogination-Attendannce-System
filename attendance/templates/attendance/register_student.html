@@ -1,0 +1,146 @@
+{% extends 'attendance/base.html' %}
+{% block title %}{{ student|yesno:"Edit,Register" }} Student{% endblock %}
+{% block topbar_title %}<span>{{ student|yesno:"EDIT STUDENT,REGISTER STUDENT" }}</span>{% endblock %}
+
+{% block content %}
+{% load crispy_forms_tags %}
+
+<div class="page-header">
+  <div>
+    <div class="page-header-title">
+      <i class="bi bi-person-plus" style="color:var(--cyan)"></i>
+      {{ student|yesno:"Edit Student,Register New Student" }}
+    </div>
+    <div class="page-header-sub">
+      {{ student|yesno:"Update student information and re-capture face if needed,Fill details then capture face encoding" }}
+    </div>
+  </div>
+  <a href="{% url 'student_list' %}" class="btn-sid btn-sid-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="sid-card">
+      <h6 style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:20px">
+        Student Information
+      </h6>
+      <form method="post" enctype="multipart/form-data" id="studentForm">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="sid-label">Roll Number *</label>
+            <input type="text" name="roll_number" class="sid-input"
+              value="{{ form.roll_number.value|default:'' }}"
+              placeholder="CS-2024-001" required>
+            {% if form.roll_number.errors %}<div style="color:var(--red);font-size:11px;margin-top:4px">{{ form.roll_number.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Full Name *</label>
+            <input type="text" name="name" class="sid-input"
+              value="{{ form.name.value|default:'' }}"
+              placeholder="Ahmed Ali Khan" required>
+            {% if form.name.errors %}<div style="color:var(--red);font-size:11px;margin-top:4px">{{ form.name.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Email</label>
+            <input type="email" name="email" class="sid-input"
+              value="{{ form.email.value|default:'' }}"
+              placeholder="student@college.edu">
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Department</label>
+            <select name="department" class="sid-input">
+              <option value="">— Select —</option>
+              {% for dept in form.fields.department.queryset %}
+              <option value="{{ dept.pk }}" {% if form.department.value|stringformat:"s" == dept.pk|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Year</label>
+            <select name="year" class="sid-input">
+              {% for val, label in form.fields.year.choices %}
+              <option value="{{ val }}" {% if form.year.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Photo (optional — also used for face registration)</label>
+            <input type="file" name="photo" class="sid-input" accept="image/*" id="photoInput">
+            {% if student.photo %}
+            <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Current photo: <a href="{{ student.photo.url }}" target="_blank" style="color:var(--cyan)">view</a></div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn-sid btn-sid-primary">
+            <i class="bi bi-save"></i> {{ student|yesno:"Save Changes,Register Student" }}
+          </button>
+          {% if student %}
+          <a href="{% url 'capture_face' student.pk %}" class="btn-sid btn-sid-outline">
+            <i class="bi bi-camera"></i> Re-capture Face
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- Photo Preview -->
+    <div class="sid-card mb-3">
+      <h6 style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px">Photo Preview</h6>
+      <div style="text-align:center">
+        <img id="photoPreview"
+          src="{% if student.photo %}{{ student.photo.url }}{% else %}{% endif %}"
+          style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:1px solid var(--border);{% if not student.photo %}display:none{% endif %}"
+          alt="">
+        <div id="photoPlaceholder" style="{% if student.photo %}display:none{% endif %}width:120px;height:120px;background:var(--bg3);border:1px dashed var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;color:var(--text-muted);font-size:32px">
+          <i class="bi bi-person"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="sid-card">
+      <h6 style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px">Registration Steps</h6>
+      <div class="d-flex gap-3 align-items-start mb-3">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--cyan);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">1</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">Fill Student Info</div>
+          <div style="font-size:11px;color:var(--text-muted)">Name, roll, department</div>
+        </div>
+      </div>
+      <div class="d-flex gap-3 align-items-start mb-3">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">2</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">Capture Face</div>
+          <div style="font-size:11px;color:var(--text-muted)">Webcam face encoding</div>
+        </div>
+      </div>
+      <div class="d-flex gap-3 align-items-start">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">3</div>
+        <div>
+          <div style="font-size:13px;font-weight:600">System Ready</div>
+          <div style="font-size:11px;color:var(--text-muted)">Student can mark attendance</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('photoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('photoPreview').src = ev.target.result;
+    document.getElementById('photoPreview').style.display = 'block';
+    document.getElementById('photoPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+</script>
+{% endblock %}

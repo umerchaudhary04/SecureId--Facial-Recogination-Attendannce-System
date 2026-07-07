@@ -1,0 +1,67 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Manual Attendance Entry{% endblock %}
+{% block topbar_title %}<span>MANUAL ENTRY</span>{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title"><i class="bi bi-pencil-square" style="color:var(--cyan)"></i> Manual Attendance Entry</div>
+    <div class="page-header-sub">Override or add attendance records manually</div>
+  </div>
+  <a href="{% url 'attendance_logs' %}" class="btn-sid btn-sid-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="sid-card">
+      <div class="msg-banner msg-warning" style="margin-bottom:20px">
+        <i class="bi bi-exclamation-triangle"></i> Manual entries are logged separately from face recognition records.
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="sid-label">Student *</label>
+            <select name="student" class="sid-input" required>
+              <option value="">— Select Student —</option>
+              {% for s in form.fields.student.queryset %}
+              <option value="{{ s.pk }}">{{ s.name }} — {{ s.roll_number }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Date *</label>
+            <input type="date" name="date" value="{{ form.date.value|default:'' }}" class="sid-input" required>
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Status *</label>
+            <select name="status" class="sid-input" required>
+              {% for val, label in form.fields.status.choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Entry Time</label>
+            <input type="time" name="entry_time" value="{{ form.entry_time.value|default:'' }}" class="sid-input">
+          </div>
+          <div class="col-md-6">
+            <label class="sid-label">Exit Time</label>
+            <input type="time" name="exit_time" value="{{ form.exit_time.value|default:'' }}" class="sid-input">
+          </div>
+          <div class="col-12">
+            <label class="sid-label">Note</label>
+            <textarea name="note" class="sid-input" rows="2" placeholder="Reason for manual entry…">{{ form.note.value|default:'' }}</textarea>
+          </div>
+        </div>
+        <div class="mt-4">
+          <button type="submit" class="btn-sid btn-sid-primary">
+            <i class="bi bi-save"></i> Save Entry
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

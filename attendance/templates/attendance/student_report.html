@@ -1,0 +1,132 @@
+{% extends 'attendance/base.html' %}
+{% block title %}Report – {{ student.name }}{% endblock %}
+{% block topbar_title %}<span>STUDENT REPORT</span>{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-title"><i class="bi bi-graph-up" style="color:var(--cyan)"></i> {{ student.name }}</div>
+    <div class="page-header-sub" style="font-family:var(--mono)">{{ student.roll_number }} · {{ student.department }}</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'export_csv' %}?student={{ student.pk }}&date_from={{ year }}-{{ month }}-01" class="btn-sid btn-sid-outline">
+      <i class="bi bi-download"></i> Export CSV
+    </a>
+    <a href="{% url 'student_list' %}" class="btn-sid btn-sid-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<!-- Month Selector -->
+<div class="sid-card mb-3">
+  <form method="get" class="d-flex gap-2 align-items-end">
+    <div>
+      <label class="sid-label">Month</label>
+      <select name="month" class="sid-input">
+        {% for m in "1,2,3,4,5,6,7,8,9,10,11,12"|split:"," %}
+        {% endfor %}
+        <option value="1"  {% if month == 1  %}selected{% endif %}>January</option>
+        <option value="2"  {% if month == 2  %}selected{% endif %}>February</option>
+        <option value="3"  {% if month == 3  %}selected{% endif %}>March</option>
+        <option value="4"  {% if month == 4  %}selected{% endif %}>April</option>
+        <option value="5"  {% if month == 5  %}selected{% endif %}>May</option>
+        <option value="6"  {% if month == 6  %}selected{% endif %}>June</option>
+        <option value="7"  {% if month == 7  %}selected{% endif %}>July</option>
+        <option value="8"  {% if month == 8  %}selected{% endif %}>August</option>
+        <option value="9"  {% if month == 9  %}selected{% endif %}>September</option>
+        <option value="10" {% if month == 10 %}selected{% endif %}>October</option>
+        <option value="11" {% if month == 11 %}selected{% endif %}>November</option>
+        <option value="12" {% if month == 12 %}selected{% endif %}>December</option>
+      </select>
+    </div>
+    <div>
+      <label class="sid-label">Year</label>
+      <input type="number" name="year" value="{{ year }}" class="sid-input" style="width:100px" min="2020" max="2030">
+    </div>
+    <button type="submit" class="btn-sid btn-sid-outline"><i class="bi bi-search"></i> View</button>
+  </form>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon cyan"><i class="bi bi-calendar-check"></i></div>
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-label">Total Days</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+      <div class="stat-value" style="color:var(--green)">{{ present }}</div>
+      <div class="stat-label">Present</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="bi bi-clock"></i></div>
+      <div class="stat-value" style="color:var(--amber)">{{ late }}</div>
+      <div class="stat-label">Late</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="{% if pct < 75 %}border-color:var(--red){% endif %}">
+      <div class="stat-icon {% if pct >= 75 %}green{% else %}red{% endif %}"><i class="bi bi-percent"></i></div>
+      <div class="stat-value" style="color:{% if pct >= 75 %}var(--green){% else %}var(--red){% endif %}">{{ pct }}%</div>
+      <div class="stat-label">Attendance %</div>
+      {% if pct < 75 %}
+      <div style="font-size:10px;color:var(--red);margin-top:4px"><i class="bi bi-exclamation-triangle"></i> Below 75%</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Attendance Log Table -->
+<div class="sid-card" style="padding:0;overflow:hidden">
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div style="font-weight:600;font-size:14px">Monthly Log</div>
+    <span class="badge-sid {% if pct >= 75 %}badge-present{% else %}badge-absent{% endif %}">{{ pct }}% Attendance</span>
+  </div>
+  {% if logs %}
+  <div style="overflow-x:auto">
+    <table class="sid-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Day</th>
+          <th>Entry</th>
+          <th>Exit</th>
+          <th>Duration</th>
+          <th>Status</th>
+          <th>Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="font-family:var(--mono);font-size:12px">{{ log.date }}</td>
+          <td style="font-size:12px;color:var(--text-muted)">{{ log.date|date:"D" }}</td>
+          <td style="font-family:var(--mono);font-size:12px">{{ log.entry_time|default:"—" }}</td>
+          <td style="font-family:var(--mono);font-size:12px;color:var(--text-muted)">{{ log.exit_time|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--text-muted)">{{ log.duration }}</td>
+          <td><span class="badge-sid badge-{{ log.status }}">{{ log.get_status_display }}</span></td>
+          <td style="font-size:11px;color:var(--text-muted)">
+            {% if log.marked_via == 'face' %}<i class="bi bi-camera" style="color:var(--cyan)"></i> Face{% else %}<i class="bi bi-pencil"></i> Manual{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:48px;color:var(--text-muted)">
+    <i class="bi bi-calendar-x" style="font-size:36px;display:block;margin-bottom:10px"></i>
+    No records for this month
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
