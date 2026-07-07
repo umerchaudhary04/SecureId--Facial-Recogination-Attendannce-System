@@ -199,5 +199,3 @@ secureid/
 
 ## 👨‍💻 Author
   Umer Asghar [umerchaudhary2004@gmail.com]
-**SecureID v2.0**
-Built with Django + OpenCV + face_recognition
